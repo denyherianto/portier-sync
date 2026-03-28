@@ -5,6 +5,13 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+/** "user.battery_level" → "User Battery Level" */
+export function humanizeFieldName(fieldName: string): string {
+  return fieldName
+    .replace(/[._]/g, ' ')
+    .replace(/\b\w/g, c => c.toUpperCase())
+}
+
 export function formatRelativeTime(date: string | null): string {
   if (!date) return 'Never'
   const diff = Date.now() - new Date(date).getTime()

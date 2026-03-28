@@ -1,6 +1,6 @@
 export type SyncStatus = 'SUCCESS' | 'FAILED' | 'CONFLICT'
 
-export type ChangeType = 'CREATE' | 'UPDATE' | 'DELETE'
+export type ChangeType = 'CREATE' | 'ADD' | 'UPDATE' | 'DELETE'
 
 export type SyncHistoryChange = {
   id: string

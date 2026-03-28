@@ -2,8 +2,16 @@ import type { IntegrationStatus, SyncHistory, SyncHistoryChange, SyncStatus } fr
 import { isSimilarEnoughToConflict } from '@/lib/similarity'
 import { SYNC_STATUS_TO_INTEGRATION_STATUS } from '@/constants'
 
+const DATE_FIELD_PATTERN = /\b(date|time|at|timestamp|expir|birth|dob|created|updated|modified|start|end)\b/i
+
+export function isDateField(fieldName: string): boolean {
+  return DATE_FIELD_PATTERN.test(fieldName)
+}
+
 export function isConflictChange(change: SyncHistoryChange) {
-  return change.changeType === 'UPDATE' && isSimilarEnoughToConflict(change.currentValue, change.newValue)
+  if (change.changeType !== 'UPDATE') return false
+  if (isDateField(change.fieldName)) return false
+  return isSimilarEnoughToConflict(change.currentValue, change.newValue)
 }
 
 export function isUnresolvedConflictChange(change: SyncHistoryChange) {

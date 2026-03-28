@@ -1,15 +1,15 @@
 'use client'
 
-import { use, useMemo } from 'react'
+import { use, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, RefreshCw, Clock, ListChecks, AlertTriangle, Heart, CheckCircle, XCircle, GitMerge, Loader2 } from 'lucide-react'
+import { ArrowLeft, RefreshCw, Clock, ListChecks, AlertTriangle, Heart, CheckCircle, XCircle, GitMerge, Loader2, ChevronDown } from 'lucide-react'
 import { useIntegrationQuery } from '@/api/queries/integrations'
 import { useSyncHistoriesQuery } from '@/api/queries/sync-histories'
 import { useSyncMutation } from '@/api/mutations/sync'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { cn, formatRelativeTime } from '@/lib/utils'
-import { getUnresolvedConflictChanges, hasBlockingConflict } from '@/lib/syncHistory'
+import { cn, formatRelativeTime, humanizeFieldName } from '@/lib/utils'
+import { getUnresolvedConflictChanges, hasBlockingConflict, isConflictChange, isUnresolvedConflictChange } from '@/lib/syncHistory'
 import type { SyncHistory, SyncStatus } from '@/types'
 
 // ---------------------------------------------------------------------------
@@ -22,7 +22,15 @@ const syncStatusConfig: Record<SyncStatus, { label: string; icon: React.ReactNod
   FAILED: { label: 'Failed', icon: <XCircle className="w-3.5 h-3.5" />, className: 'bg-red-50 text-red-700 border-red-200' },
 }
 
-function SyncStatusBadge({ status }: { status: SyncStatus }) {
+function SyncStatusBadge({ status, conflictResolved }: { status: SyncStatus; conflictResolved?: boolean }) {
+  if (status === 'SUCCESS' && conflictResolved) {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border bg-teal-50 text-teal-700 border-teal-200">
+        <GitMerge className="w-3.5 h-3.5" />
+        Conflict (Resolved)
+      </span>
+    )
+  }
   const { label, icon, className } = syncStatusConfig[status]
   return (
     <span className={cn('inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border', className)}>
@@ -66,18 +74,156 @@ function StatCard({ title, icon, value, sub, accent }: StatCardProps) {
 function useStats(histories: SyncHistory[]) {
   return useMemo(() => {
     const lastSuccess = histories.find(h => h.status === 'SUCCESS')
-    const activeConflicts = histories.filter(h => h.status === 'CONFLICT').length
-    const total = histories.length
+    const totalSyncs = histories.length
+    const resolvedConflicts = histories.filter(h =>
+      (h.changes ?? []).some(c => c.chosenValue !== null && c.chosenValue !== undefined)
+    ).length
     const successCount = histories.filter(h => h.status === 'SUCCESS').length
-    const health = total > 0 ? ((successCount / total) * 100).toFixed(1) : '—'
+    const health = totalSyncs > 0 ? ((successCount / totalSyncs) * 100).toFixed(1) : '—'
 
-    const pendingUpdates = histories
-      .flatMap(h => h.changes ?? [])
-      .filter(c => c.newValue && !c.chosenValue)
-      .length
-
-    return { lastSuccess, activeConflicts, health, pendingUpdates }
+    return { lastSuccess, totalSyncs, resolvedConflicts, health }
   }, [histories])
+}
+
+// ---------------------------------------------------------------------------
+// Page
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Change type badge
+// ---------------------------------------------------------------------------
+
+const changeTypeConfig: Record<string, { label: string; className: string }> = {
+  CREATE: { label: 'Create', className: 'bg-green-50 text-green-700 border-green-200' },
+  ADD:    { label: 'Add',    className: 'bg-green-50 text-green-700 border-green-200' },
+  UPDATE: { label: 'Update', className: 'bg-blue-50 text-blue-700 border-blue-200' },
+  DELETE: { label: 'Delete', className: 'bg-red-50 text-red-700 border-red-200' },
+}
+
+const fallbackChangeType = { label: 'Unknown', className: 'bg-gray-50 text-gray-500 border-gray-200' }
+
+// ---------------------------------------------------------------------------
+// Expandable history list
+// ---------------------------------------------------------------------------
+
+function HistoryList({ histories }: { histories: SyncHistory[] }) {
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+
+  return (
+    <div className="divide-y divide-gray-100">
+      {histories.map(h => {
+        const conflictCount = getUnresolvedConflictChanges(h).length
+        const changes = h.changes ?? []
+        const isExpanded = expandedId === h.id
+        const conflictResolved = h.status === 'SUCCESS' && changes.some(c => c.chosenValue !== null && c.chosenValue !== undefined)
+
+        return (
+          <div key={h.id}>
+            <button
+              onClick={() => setExpandedId(isExpanded ? null : h.id)}
+              className="w-full grid grid-cols-1 md:grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-gray-50/80 transition-colors text-left"
+            >
+              <div className="md:col-span-3">
+                <SyncStatusBadge status={h.status} conflictResolved={conflictResolved} />
+              </div>
+              <div className="md:col-span-4 text-sm text-gray-600">
+                {new Date(h.syncedAt).toLocaleString()}
+              </div>
+              <div className="md:col-span-2 text-sm text-gray-600">
+                {changes.length}
+              </div>
+              <div className="md:col-span-2 text-sm">
+                {conflictCount > 0
+                  ? <span className="text-amber-600 font-medium">{conflictCount} conflict{conflictCount > 1 ? 's' : ''}</span>
+                  : <span className="text-gray-400">—</span>
+                }
+              </div>
+              <div className="md:col-span-1 flex justify-end">
+                <ChevronDown className={cn('w-4 h-4 text-gray-400 transition-transform', isExpanded && 'rotate-180')} />
+              </div>
+            </button>
+
+            {isExpanded && changes.length > 0 && (
+              <div className="border-t border-gray-100 bg-gray-50/50 px-6 py-3">
+                <div className="grid grid-cols-[5rem_1fr_1fr_1fr_1fr] gap-x-4 text-xs font-semibold uppercase tracking-widest text-gray-400 pb-2 border-b border-gray-100 mb-1">
+                  <div>Type</div>
+                  <div>Field</div>
+                  <div>Current</div>
+                  <div>New</div>
+                  <div>Chosen</div>
+                </div>
+                <div className="divide-y divide-gray-100">
+                  {changes.map(c => {
+                    const cfg = changeTypeConfig[c.changeType] ?? fallbackChangeType
+                    const hasChosen = c.chosenValue !== null && c.chosenValue !== undefined
+                    const choseLocal = hasChosen && c.chosenValue === c.currentValue
+                    const choseNew = hasChosen && c.chosenValue === c.newValue
+                    const choseManual = hasChosen && !choseLocal && !choseNew
+                    const isConflict = isConflictChange(c)
+                    const isUnresolved = isUnresolvedConflictChange(c)
+                    return (
+                      <div key={c.id} className={cn(
+                        'grid grid-cols-[5rem_1fr_1fr_1fr_1fr] gap-x-4 items-center py-1.5 px-2 rounded-md',
+                        isUnresolved && 'bg-amber-50/60',
+                      )}>
+                        <span className={cn('inline-flex items-center justify-center px-1.5 py-0.5 rounded border text-[10px] font-semibold uppercase tracking-wide w-full', cfg.className)}>
+                          {cfg.label}
+                        </span>
+                        <div className="flex items-center gap-1.5 font-mono text-gray-700 text-xs min-w-0">
+                          <span className="truncate">{humanizeFieldName(c.fieldName)}</span>
+                          {isConflict && !isUnresolved && (
+                            <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wide px-1 py-0.5 rounded bg-teal-50 text-teal-600 border border-teal-200">
+                              resolved
+                            </span>
+                          )}
+                          {isUnresolved && (
+                            <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wide px-1 py-0.5 rounded bg-amber-50 text-amber-600 border border-amber-200">
+                              conflict
+                            </span>
+                          )}
+                        </div>
+                        <div className={cn(
+                          'text-xs truncate px-2 py-1 rounded w-full',
+                          choseLocal ? 'bg-blue-50 text-blue-700 font-semibold ring-1 ring-blue-200' : 'text-gray-500'
+                        )}>
+                          {c.currentValue ?? <span className="text-gray-300 italic">—</span>}
+                        </div>
+                        <div className={cn(
+                          'text-xs truncate px-2 py-1 rounded w-full',
+                          choseNew ? 'bg-green-50 text-green-700 font-semibold ring-1 ring-green-200' : 'text-gray-800'
+                        )}>
+                          {c.newValue ?? <span className="text-gray-300 italic">—</span>}
+                        </div>
+                        <div className="text-xs w-full">
+                          {hasChosen
+                            ? <div className={cn(
+                                'px-2 py-1 rounded font-semibold ring-1 truncate',
+                                choseLocal ? 'bg-blue-50 text-blue-700 ring-blue-200' :
+                                choseManual ? 'bg-orange-50 text-orange-700 ring-orange-200' :
+                                'bg-green-50 text-green-700 ring-green-200'
+                              )}>
+                                {c.chosenValue}
+                              </div>
+                            : <span className="text-gray-300 italic">—</span>
+                          }
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {isExpanded && changes.length === 0 && (
+              <div className="border-t border-gray-100 bg-gray-50/50 px-6 py-4 text-sm text-gray-400">
+                No field changes recorded for this sync.
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -91,7 +237,7 @@ export default function IntegrationDetailPage({ params }: { params: Promise<{ id
   const { data: histories = [], isPending: historiesLoading } = useSyncHistoriesQuery(id)
   const { mutate: triggerSync, isPending: syncing } = useSyncMutation(id)
 
-  const { lastSuccess, activeConflicts, health, pendingUpdates } = useStats(histories)
+  const { lastSuccess, totalSyncs, resolvedConflicts, health } = useStats(histories)
   const latestHistory = histories[0]
   const syncBlocked = hasBlockingConflict(latestHistory)
 
@@ -181,21 +327,20 @@ export default function IntegrationDetailPage({ params }: { params: Promise<{ id
               }
             />
             <StatCard
-              title="Pending Updates"
+              title="Total Syncs"
               icon={<ListChecks className="w-4 h-4" />}
-              value={pendingUpdates}
-              sub={<span className="text-sm text-gray-500">Auto-resolvable changes</span>}
+              value={totalSyncs}
+              sub={<span className="text-sm text-gray-500">{totalSyncs === 1 ? '1 sync run' : `${totalSyncs} sync runs`}</span>}
             />
             <StatCard
-              title="Active Conflicts"
+              title="Resolved Conflicts"
               icon={<AlertTriangle className="w-4 h-4" />}
-              value={activeConflicts}
+              value={resolvedConflicts}
               sub={
-                activeConflicts > 0
-                  ? <span className="text-sm text-amber-600 font-medium">Require manual review</span>
-                  : <span className="text-sm text-gray-400">No conflicts</span>
+                resolvedConflicts > 0
+                  ? <span className="text-sm text-gray-500">{resolvedConflicts === 1 ? '1 sync resolved' : `${resolvedConflicts} syncs resolved`}</span>
+                  : <span className="text-sm text-gray-400">None yet</span>
               }
-              accent={activeConflicts > 0}
             />
             <StatCard
               title="Integration Health"
@@ -224,7 +369,8 @@ export default function IntegrationDetailPage({ params }: { params: Promise<{ id
             <div className="col-span-3 text-xs font-semibold text-gray-500 uppercase tracking-widest">Status</div>
             <div className="col-span-4 text-xs font-semibold text-gray-500 uppercase tracking-widest">Synced At</div>
             <div className="col-span-2 text-xs font-semibold text-gray-500 uppercase tracking-widest">Changes</div>
-            <div className="col-span-3 text-xs font-semibold text-gray-500 uppercase tracking-widest">Conflicts</div>
+            <div className="col-span-2 text-xs font-semibold text-gray-500 uppercase tracking-widest">Conflicts</div>
+            <div className="col-span-1" />
           </div>
 
           {historiesLoading && (
@@ -247,30 +393,7 @@ export default function IntegrationDetailPage({ params }: { params: Promise<{ id
           )}
 
           {!historiesLoading && histories.length > 0 && (
-            <div className="divide-y divide-gray-100">
-              {histories.map(h => {
-                const conflictCount = getUnresolvedConflictChanges(h).length
-                return (
-                  <div key={h.id} className="grid grid-cols-1 md:grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-gray-50/80 transition-colors">
-                    <div className="md:col-span-3">
-                      <SyncStatusBadge status={h.status} />
-                    </div>
-                    <div className="md:col-span-4 text-sm text-gray-600">
-                      {new Date(h.syncedAt).toLocaleString()}
-                    </div>
-                    <div className="md:col-span-2 text-sm text-gray-600">
-                      {(h.changes ?? []).length}
-                    </div>
-                    <div className="md:col-span-3 text-sm">
-                      {conflictCount > 0
-                        ? <span className="text-amber-600 font-medium">{conflictCount} conflict{conflictCount > 1 ? 's' : ''}</span>
-                        : <span className="text-gray-400">—</span>
-                      }
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
+            <HistoryList histories={histories} />
           )}
         </div>
       </div>

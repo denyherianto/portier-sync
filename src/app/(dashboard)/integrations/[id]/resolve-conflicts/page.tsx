@@ -26,7 +26,7 @@ import {
   hasBlockingConflict,
   isConflictChange,
 } from '@/lib/syncHistory'
-import { cn, formatRelativeTime } from '@/lib/utils'
+import { cn, formatRelativeTime, humanizeFieldName } from '@/lib/utils'
 import type { SyncHistory, SyncHistoryChange } from '@/types'
 
 // ---------------------------------------------------------------------------
@@ -296,14 +296,14 @@ function ConflictResolver({ integrationId, history }: ConflictResolverProps) {
                 <div className="grid grid-cols-[1fr_2fr_2fr_2.5rem] gap-4 items-start">
                   <div className="pt-3 flex flex-col gap-1.5">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-sm font-medium text-gray-900">{change.fieldName}</span>
+                      <span className="text-sm font-medium text-gray-900">{humanizeFieldName(change.fieldName)}</span>
                       {isPendingConflict && <span className="size-1.5 rounded-full bg-amber-500 shrink-0" />}
                     </div>
                     <div className="flex items-center gap-1.5">
                       <span className={cn(
                         'text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded border',
                         change.changeType === 'UPDATE' && 'bg-blue-50 text-blue-600 border-blue-200',
-                        change.changeType === 'CREATE' && 'bg-green-50 text-green-600 border-green-200',
+                        (change.changeType === 'CREATE' || change.changeType === 'ADD') && 'bg-green-50 text-green-600 border-green-200',
                         change.changeType === 'DELETE' && 'bg-red-50 text-red-600 border-red-200',
                       )}>
                         {change.changeType}
