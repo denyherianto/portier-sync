@@ -1,3 +1,8 @@
+export const syncHistoryKeys = {
+  all: ['sync-histories'] as const,
+  byIntegration: (integrationId: string) => [...syncHistoryKeys.all, integrationId] as const,
+}
+
 export const catalogKeys = {
   all: ['integration-catalog'] as const,
   lists: () => [...catalogKeys.all, 'list'] as const,

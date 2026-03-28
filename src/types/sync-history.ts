@@ -2,7 +2,7 @@ export type SyncStatus = 'SUCCESS' | 'FAILED' | 'CONFLICT'
 
 export type ChangeType = 'CREATE' | 'UPDATE' | 'DELETE'
 
-export interface SyncHistoryChange {
+export type SyncHistoryChange = {
   id: string
   syncHistoryId: string
   fieldName: string
@@ -14,7 +14,7 @@ export interface SyncHistoryChange {
   chosenValue?: string | null
 }
 
-export interface SyncHistory {
+export type SyncHistory = {
   id: string
   integrationId: string
   syncedAt: string
@@ -23,7 +23,7 @@ export interface SyncHistory {
   changes?: SyncHistoryChange[]
 }
 
-export interface CreateSyncHistoryPayload {
+export type CreateSyncHistoryPayload = {
   integrationId: string
   syncedAt: string
   status: SyncStatus

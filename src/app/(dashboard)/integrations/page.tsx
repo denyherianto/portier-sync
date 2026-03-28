@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import Link from 'next/link'
 import { Search, SlidersHorizontal, Plus, Check, Trash2 } from 'lucide-react'
 import { useIntegrationsQuery } from '@/api/queries/integrations'
 import { useCreateIntegrationMutation, useDeleteIntegrationMutation } from '@/api/mutations/integrations'
@@ -414,13 +415,15 @@ export default function IntegrationsPage() {
                 className="grid grid-cols-1 md:grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-gray-50/80 transition-colors group"
               >
                 <div className="md:col-span-4 flex items-center gap-4">
-                  <div
-                    className="w-10 h-10 rounded-lg text-white flex items-center justify-center text-lg font-medium shadow-sm shrink-0"
-                    style={{ backgroundColor: integration.color }}
-                  >
-                    {integration.name[0]}
-                  </div>
-                  <span className="text-base font-medium text-gray-900">{integration.name}</span>
+                  <Link href={`/integrations/${integration.id}`} className="flex items-center gap-4 flex-1 min-w-0">
+                    <div
+                      className="w-10 h-10 rounded-lg text-white flex items-center justify-center text-lg font-medium shadow-sm shrink-0"
+                      style={{ backgroundColor: integration.color }}
+                    >
+                      {integration.name[0]}
+                    </div>
+                    <span className="text-base font-medium text-gray-900 hover:underline underline-offset-2">{integration.name}</span>
+                  </Link>
                 </div>
 
                 <div className="md:col-span-3 flex items-center justify-between md:justify-start">

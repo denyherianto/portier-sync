@@ -1,4 +1,4 @@
-export interface IntegrationCatalog {
+export type IntegrationCatalog = {
   id: string
   name: string
   color: string
