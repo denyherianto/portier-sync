@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { integrations, syncHistories, syncHistoryChanges } from '@/lib/db/schema'
 import type { SyncStatus, ChangeType, CommonResponse } from '@/types'
+import { isSimilarEnoughToConflict } from '@/lib/similarity'
 
 export const runtime = 'nodejs'
 
@@ -45,12 +46,14 @@ export async function POST(_request: NextRequest, { params }: Params) {
       if (!res.ok) {
         status = 'FAILED'
       } else {
-        const response: CommonResponse<ExternalSyncResponse, {}> = await res.json()
+        const response: CommonResponse<ExternalSyncResponse, unknown> = await res.json()
         const data = response.data
         externalChanges = data?.sync_approval?.changes ?? []
         if (data?.synced_at) syncedAt = new Date(data.synced_at)
 
-        const hasConflict = externalChanges.some(c => c.current_value !== null && c.current_value !== undefined)
+        const hasConflict = externalChanges.some(
+          (change) => change.change_type === 'UPDATE' && isSimilarEnoughToConflict(change.current_value, change.new_value)
+        )
         if (hasConflict) status = 'CONFLICT'
       }
     } catch {

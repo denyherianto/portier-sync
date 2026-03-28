@@ -12,11 +12,11 @@ export default function IntegrationsLoading() {
       </div>
 
       <div className="flex gap-4 mb-6">
-        <Skeleton className="h-11 flex-1 rounded-xl" />
-        <Skeleton className="h-11 w-36 rounded-xl" />
+        <Skeleton className="h-11 flex-1 rounded-lg" />
+        <Skeleton className="h-11 w-36 rounded-lg" />
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
         <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-3 border-b border-gray-200 bg-gray-50/50">
           {['Integration', 'Status', 'Last Synced', 'Version'].map(h => (
             <Skeleton key={h} className="h-3.5 w-20 col-span-3" />

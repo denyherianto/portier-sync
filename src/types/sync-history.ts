@@ -35,3 +35,10 @@ export type CreateSyncHistoryPayload = {
     chosenValue?: string | null
   }>
 }
+
+export type ResolveSyncHistoryPayload = {
+  resolutions: Array<{
+    changeId: string
+    chosenValue: string
+  }>
+}

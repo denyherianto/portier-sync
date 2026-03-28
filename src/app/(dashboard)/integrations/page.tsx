@@ -246,7 +246,7 @@ function AddIntegrationDialog({ open, onClose }: AddIntegrationDialogProps) {
             <button
               type="submit"
               disabled={isPending || !canSubmit}
-              className="text-sm font-medium bg-[#0F172A] text-white hover:bg-gray-800 px-4 py-2 rounded-lg shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="text-sm font-medium bg-black text-white hover:bg-gray-800 px-4 py-2 rounded-lg shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isPending ? 'Adding…' : 'Add Integration'}
             </button>
@@ -303,7 +303,7 @@ export default function IntegrationsPage() {
         </div>
         <button
           onClick={() => setAddOpen(true)}
-          className="bg-[#0F172A] hover:bg-gray-800 text-white px-4 py-2.5 rounded-lg text-base font-medium shadow-sm transition-all flex items-center gap-2 whitespace-nowrap"
+          className="bg-black hover:bg-black/80 cursor-pointer text-white px-3 py-2 rounded-lg text-base font-medium shadow-sm transition-all flex items-center gap-2 whitespace-nowrap"
         >
           <Plus strokeWidth={1.5} className="w-5 h-5" />
           Add Integration
@@ -321,7 +321,7 @@ export default function IntegrationsPage() {
             placeholder="Search integrations..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full pl-11 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-base text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-shadow shadow-sm"
+            className="w-full pl-11 pr-3 py-2 bg-white border border-gray-200 rounded-lg text-base text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-shadow shadow-sm"
           />
         </div>
 
@@ -329,7 +329,7 @@ export default function IntegrationsPage() {
           <button
             onClick={() => setFilterOpen(v => !v)}
             className={cn(
-              'bg-white border border-gray-200 px-4 py-2.5 rounded-xl text-base font-medium shadow-sm transition-all flex items-center gap-2.5 whitespace-nowrap',
+              'bg-white border border-gray-200 px-3 py-2 rounded-lg text-base font-medium shadow-sm transition-all flex items-center gap-2.5 whitespace-nowrap',
               filterOpen || statusFilter !== 'all'
                 ? 'bg-gray-100 border-gray-300 text-gray-900'
                 : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
@@ -340,7 +340,7 @@ export default function IntegrationsPage() {
           </button>
 
           {filterOpen && (
-            <div className="absolute right-0 top-full mt-1 w-44 bg-white border border-gray-200 rounded-xl shadow-lg z-10 py-1">
+            <div className="absolute right-0 top-full mt-1 w-44 bg-white border border-gray-200 rounded-lg shadow-lg z-10 py-1">
               {statusOptions.map(option => (
                 <button
                   key={option.value}
@@ -361,7 +361,7 @@ export default function IntegrationsPage() {
       </div>
 
       {/* Data List */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
+      <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden flex flex-col">
 
         {/* Table Header */}
         <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-3 border-b border-gray-200 bg-gray-50/50">

@@ -6,8 +6,10 @@ import { ArrowLeft, RefreshCw, Clock, ListChecks, AlertTriangle, Heart, CheckCir
 import { useIntegrationQuery } from '@/api/queries/integrations'
 import { useSyncHistoriesQuery } from '@/api/queries/sync-histories'
 import { useSyncMutation } from '@/api/mutations/sync'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn, formatRelativeTime } from '@/lib/utils'
+import { getUnresolvedConflictChanges, hasBlockingConflict } from '@/lib/syncHistory'
 import type { SyncHistory, SyncStatus } from '@/types'
 
 // ---------------------------------------------------------------------------
@@ -15,9 +17,9 @@ import type { SyncHistory, SyncStatus } from '@/types'
 // ---------------------------------------------------------------------------
 
 const syncStatusConfig: Record<SyncStatus, { label: string; icon: React.ReactNode; className: string }> = {
-  SUCCESS:  { label: 'Success',  icon: <CheckCircle className="w-3.5 h-3.5" />,  className: 'bg-green-50 text-green-700 border-green-200' },
-  CONFLICT: { label: 'Conflict', icon: <GitMerge className="w-3.5 h-3.5" />,     className: 'bg-amber-50 text-amber-700 border-amber-200' },
-  FAILED:   { label: 'Failed',   icon: <XCircle className="w-3.5 h-3.5" />,      className: 'bg-red-50 text-red-700 border-red-200' },
+  SUCCESS: { label: 'Success', icon: <CheckCircle className="w-3.5 h-3.5" />, className: 'bg-green-50 text-green-700 border-green-200' },
+  CONFLICT: { label: 'Conflict', icon: <GitMerge className="w-3.5 h-3.5" />, className: 'bg-amber-50 text-amber-700 border-amber-200' },
+  FAILED: { label: 'Failed', icon: <XCircle className="w-3.5 h-3.5" />, className: 'bg-red-50 text-red-700 border-red-200' },
 }
 
 function SyncStatusBadge({ status }: { status: SyncStatus }) {
@@ -44,7 +46,7 @@ interface StatCardProps {
 
 function StatCard({ title, icon, value, sub, accent }: StatCardProps) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm px-5 py-4 flex flex-col gap-3 flex-1 min-w-0">
+    <div className="bg-white rounded-lg border border-gray-200 shadow-sm px-5 py-4 flex flex-col gap-3 flex-1 min-w-0">
       <div className="flex items-center justify-between">
         <span className="text-sm text-gray-500">{title}</span>
         <span className={cn('text-gray-400', accent && 'bg-amber-50 text-amber-500 p-1.5 rounded-lg')}>{icon}</span>
@@ -90,6 +92,8 @@ export default function IntegrationDetailPage({ params }: { params: Promise<{ id
   const { mutate: triggerSync, isPending: syncing } = useSyncMutation(id)
 
   const { lastSuccess, activeConflicts, health, pendingUpdates } = useStats(histories)
+  const latestHistory = histories[0]
+  const syncBlocked = hasBlockingConflict(latestHistory)
 
   return (
     <main className="flex-1 max-w-6xl w-full mx-auto px-6 py-10 flex flex-col gap-8">
@@ -117,34 +121,52 @@ export default function IntegrationDetailPage({ params }: { params: Promise<{ id
               >
                 {integration.name[0]}
               </div>
-              <div>
-                <h1 className="text-2xl font-semibold text-gray-900">{integration.name}</h1>
-                <p className="text-sm text-gray-500 font-mono">{integration.slug}</p>
-              </div>
+              <h1 className="text-2xl font-semibold text-gray-900">{integration.name}</h1>
             </div>
           ) : (
             <p className="text-red-600 text-sm">Integration not found</p>
           )}
         </div>
 
-        <button
-          onClick={() => triggerSync()}
-          disabled={syncing}
-          className="flex items-center gap-2 bg-[#0F172A] hover:bg-gray-800 text-white px-4 py-2.5 rounded-lg text-base font-medium shadow-sm transition-all disabled:opacity-60 disabled:cursor-not-allowed whitespace-nowrap"
-        >
-          {syncing
-            ? <Loader2 className="w-4 h-4 animate-spin" />
-            : <RefreshCw strokeWidth={1.5} className="w-4 h-4" />
-          }
-          {syncing ? 'Syncing…' : 'Sync Now'}
-        </button>
+        <div className="flex flex-col items-stretch sm:items-end gap-2">
+          {syncBlocked && (
+            <p className="text-sm font-medium text-amber-700">
+              Resolve the latest conflict before starting another sync.
+            </p>
+          )}
+          <div className="flex flex-col-reverse sm:flex-row gap-3">
+            {syncBlocked && (
+              <Link
+                href={`/integrations/${id}/resolve-conflicts`}
+                className={cn(
+                  buttonVariants({ size: 'lg' }),
+                  'bg-amber-500 text-white hover:bg-amber-600'
+                )}
+              >
+                Resolve Conflicts
+              </Link>
+            )}
+            <Button
+              onClick={() => triggerSync()}
+              disabled={syncing || syncBlocked}
+              size="lg"
+              className="bg-black text-white hover:bg-gray-800 disabled:bg-slate-200 disabled:text-slate-500"
+            >
+              {syncing
+                ? <Loader2 className="w-4 h-4 animate-spin" />
+                : <RefreshCw strokeWidth={1.5} className="w-4 h-4" />
+              }
+              {syncing ? 'Syncing…' : 'Sync Now'}
+            </Button>
+          </div>
+        </div>
       </div>
 
       {/* Stats row */}
       <div className="flex flex-col sm:flex-row gap-4">
         {historiesLoading ? (
           Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="flex-1 h-32 rounded-xl" />
+            <Skeleton key={i} className="flex-1 h-32 rounded-lg" />
           ))
         ) : (
           <>
@@ -184,7 +206,7 @@ export default function IntegrationDetailPage({ params }: { params: Promise<{ id
                   <svg viewBox="0 0 40 16" className="w-8 h-4 stroke-green-500 fill-none stroke-2">
                     <polyline points="0,12 8,8 16,10 24,4 32,6 40,2" />
                   </svg>
-                  {histories.length}d uptime
+                  Last 7d uptime
                 </span>
               }
             />
@@ -196,7 +218,7 @@ export default function IntegrationDetailPage({ params }: { params: Promise<{ id
       <div className="flex flex-col gap-4">
         <h2 className="text-lg font-semibold text-gray-900">Sync History</h2>
 
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
           {/* Header */}
           <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-3 border-b border-gray-200 bg-gray-50/50">
             <div className="col-span-3 text-xs font-semibold text-gray-500 uppercase tracking-widest">Status</div>
@@ -227,7 +249,7 @@ export default function IntegrationDetailPage({ params }: { params: Promise<{ id
           {!historiesLoading && histories.length > 0 && (
             <div className="divide-y divide-gray-100">
               {histories.map(h => {
-                const conflictCount = (h.changes ?? []).filter(c => c.chosenValue === null && c.newValue !== null).length
+                const conflictCount = getUnresolvedConflictChanges(h).length
                 return (
                   <div key={h.id} className="grid grid-cols-1 md:grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-gray-50/80 transition-colors">
                     <div className="md:col-span-3">
