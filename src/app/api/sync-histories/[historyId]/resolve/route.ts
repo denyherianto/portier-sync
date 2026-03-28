@@ -47,7 +47,12 @@ export async function POST(request: NextRequest, { params }: Params) {
       .all()
 
     const conflictChanges = changes.filter(isConflictChange)
-    const historyWithChanges = { ...history, changes }
+    const historyWithChanges = {
+      ...history,
+      syncedAt: history.syncedAt instanceof Date ? history.syncedAt.toISOString() : String(history.syncedAt),
+      createdAt: history.createdAt instanceof Date ? history.createdAt.toISOString() : String(history.createdAt),
+      changes,
+    }
     const isConflictMode = history.status === 'CONFLICT' && conflictChanges.length > 0
     const isApprovalMode = hasPendingApproval(historyWithChanges)
 

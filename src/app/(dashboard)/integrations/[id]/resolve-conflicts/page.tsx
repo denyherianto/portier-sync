@@ -228,7 +228,7 @@ function ConflictResolver({ integrationId, history }: ConflictResolverProps) {
           {!approvalMode && (
             <TooltipProvider>
               <Tooltip>
-                <TooltipTrigger asChild>
+                <TooltipTrigger>
                   <span className="inline-flex items-center gap-1.5 rounded-md bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-600/10 cursor-default">
                     {getSeverityLabel(unresolvedConflicts.length)}
                     <Info className="size-3 opacity-60" />
