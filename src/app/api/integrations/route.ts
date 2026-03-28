@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status')
 
     const result = status
-      ? db.select().from(integrations).where(eq(integrations.status, status as 'synced' | 'conflict' | 'syncing' | 'error')).all()
+      ? db.select().from(integrations).where(eq(integrations.status, status as 'NOT_SYNCED' | 'SYNCED' | 'CONFLICT' | 'SYNCING' | 'ERROR')).all()
       : db.select().from(integrations).all()
 
     return Response.json(result)

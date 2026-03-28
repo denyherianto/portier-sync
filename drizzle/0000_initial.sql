@@ -10,7 +10,8 @@ CREATE TABLE `integrations` (
 	`name` text NOT NULL,
 	`slug` text NOT NULL,
 	`color` text DEFAULT '#6b7280' NOT NULL,
-	`status` text DEFAULT 'synced' NOT NULL,
+	`status` text DEFAULT 'NOT_SYNCED' NOT NULL,
+	-- valid values: NOT_SYNCED | SYNCED | CONFLICT | SYNCING | ERROR
 	`last_synced` integer,
 	`version` text NOT NULL,
 	`created_at` integer DEFAULT (unixepoch()) NOT NULL,

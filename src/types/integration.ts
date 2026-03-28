@@ -1,4 +1,4 @@
-export type IntegrationStatus = 'synced' | 'conflict' | 'syncing' | 'error'
+export type IntegrationStatus = 'NOT_SYNCED' | 'SYNCED' | 'CONFLICT' | 'SYNCING' | 'ERROR'
 
 export interface Integration {
   id: string

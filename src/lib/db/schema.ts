@@ -26,7 +26,7 @@ export const integrations = sqliteTable('integrations', {
   name: text('name').notNull(),
   slug: text('slug').notNull().unique(),
   color: text('color').notNull().default('#6b7280'),
-  status: text('status').$type<IntegrationStatus>().notNull().default('synced'),
+  status: text('status').$type<IntegrationStatus>().notNull().default('NOT_SYNCED'),
   lastSynced: int('last_synced', { mode: 'timestamp' }),
   version: text('version').notNull(),
   createdAt: int('created_at', { mode: 'timestamp' })

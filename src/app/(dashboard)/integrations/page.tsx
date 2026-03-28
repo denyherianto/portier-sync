@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Search, SlidersHorizontal, Plus, ChevronDown, Check } from 'lucide-react'
+import { Search, SlidersHorizontal, Plus, Check, Trash2 } from 'lucide-react'
 import { useIntegrationsQuery } from '@/api/queries/integrations'
-import { useCreateIntegrationMutation } from '@/api/mutations/integrations'
+import { useCreateIntegrationMutation, useDeleteIntegrationMutation } from '@/api/mutations/integrations'
 import { useIntegrationCatalogQuery } from '@/api/queries/integration-catalog'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -20,10 +20,11 @@ import type { IntegrationStatus, IntegrationCatalog } from '@/types'
 // ---------------------------------------------------------------------------
 
 const statusConfig: Record<IntegrationStatus, { label: string; className: string }> = {
-  synced:   { label: 'Synced',   className: 'bg-green-50 text-green-700 border-green-200' },
-  conflict: { label: 'Conflict', className: 'bg-amber-50 text-amber-700 border-amber-200' },
-  syncing:  { label: 'Syncing',  className: 'bg-blue-50 text-blue-700 border-blue-200' },
-  error:    { label: 'Error',    className: 'bg-red-50 text-red-700 border-red-200' },
+  NOT_SYNCED: { label: 'Not Synced', className: 'bg-gray-50 text-gray-600 border-gray-200' },
+  SYNCED:     { label: 'Synced',     className: 'bg-green-50 text-green-700 border-green-200' },
+  CONFLICT:   { label: 'Conflict',   className: 'bg-amber-50 text-amber-700 border-amber-200' },
+  SYNCING:    { label: 'Syncing',    className: 'bg-blue-50 text-blue-700 border-blue-200' },
+  ERROR:      { label: 'Error',      className: 'bg-red-50 text-red-700 border-red-200' },
 }
 
 function StatusBadge({ status }: { status: IntegrationStatus }) {
@@ -260,11 +261,12 @@ function AddIntegrationDialog({ open, onClose }: AddIntegrationDialogProps) {
 // ---------------------------------------------------------------------------
 
 const statusOptions: Array<{ value: IntegrationStatus | 'all'; label: string }> = [
-  { value: 'all', label: 'All Status' },
-  { value: 'synced', label: 'Synced' },
-  { value: 'conflict', label: 'Conflict' },
-  { value: 'syncing', label: 'Syncing' },
-  { value: 'error', label: 'Error' },
+  { value: 'all',        label: 'All Status' },
+  { value: 'NOT_SYNCED', label: 'Not Synced' },
+  { value: 'SYNCED',     label: 'Synced' },
+  { value: 'CONFLICT',   label: 'Conflict' },
+  { value: 'SYNCING',    label: 'Syncing' },
+  { value: 'ERROR',      label: 'Error' },
 ]
 
 // ---------------------------------------------------------------------------
@@ -278,6 +280,7 @@ export default function IntegrationsPage() {
   const [addOpen, setAddOpen] = useState(false)
 
   const { data: integrations, isPending, isError, error } = useIntegrationsQuery()
+  const { mutate: deleteIntegration } = useDeleteIntegrationMutation()
 
   const filtered = useMemo(() => {
     if (!integrations) return []
@@ -363,8 +366,9 @@ export default function IntegrationsPage() {
         <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-3 border-b border-gray-200 bg-gray-50/50">
           <div className="col-span-4 text-xs font-semibold text-gray-500 uppercase tracking-widest">Integration</div>
           <div className="col-span-3 text-xs font-semibold text-gray-500 uppercase tracking-widest">Status</div>
-          <div className="col-span-3 text-xs font-semibold text-gray-500 uppercase tracking-widest">Last Synced</div>
+          <div className="col-span-2 text-xs font-semibold text-gray-500 uppercase tracking-widest">Last Synced</div>
           <div className="col-span-2 text-xs font-semibold text-gray-500 uppercase tracking-widest">Version</div>
+          <div className="col-span-1" />
         </div>
 
         {/* Loading */}
@@ -377,8 +381,9 @@ export default function IntegrationsPage() {
                   <Skeleton className="h-4 w-28" />
                 </div>
                 <div className="col-span-3"><Skeleton className="h-6 w-16 rounded-full" /></div>
-                <div className="col-span-3"><Skeleton className="h-4 w-24" /></div>
+                <div className="col-span-2"><Skeleton className="h-4 w-24" /></div>
                 <div className="col-span-2"><Skeleton className="h-6 w-14 rounded-md" /></div>
+                <div className="col-span-1" />
               </div>
             ))}
           </div>
@@ -423,7 +428,7 @@ export default function IntegrationsPage() {
                   <StatusBadge status={integration.status} />
                 </div>
 
-                <div className="md:col-span-3 flex items-center justify-between md:justify-start text-base text-gray-500 group-hover:text-gray-700 transition-colors">
+                <div className="md:col-span-2 flex items-center justify-between md:justify-start text-base text-gray-500 group-hover:text-gray-700 transition-colors">
                   <span className="text-xs font-semibold text-gray-500 md:hidden uppercase tracking-widest">Last Synced</span>
                   {formatRelativeTime(integration.lastSynced)}
                 </div>
@@ -433,6 +438,16 @@ export default function IntegrationsPage() {
                   <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium text-gray-600 bg-gray-50 border border-gray-200">
                     {integration.version}
                   </span>
+                </div>
+
+                <div className="md:col-span-1 flex justify-end">
+                  <button
+                    onClick={() => deleteIntegration(integration.id)}
+                    className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors opacity-0 group-hover:opacity-100"
+                    aria-label={`Delete ${integration.name}`}
+                  >
+                    <Trash2 strokeWidth={1.5} className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
             ))}
