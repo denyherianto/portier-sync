@@ -18,8 +18,8 @@ export default function IntegrationsLoading() {
 
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
         <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-3 border-b border-gray-200 bg-gray-50/50">
-          {['Integration', 'Status', 'Last Synced', 'Version'].map(h => (
-            <Skeleton key={h} className="h-3.5 w-20 col-span-3" />
+          {['Integration', 'Status', 'Last Synced'].map(h => (
+            <Skeleton key={h} className="h-3.5 w-20 col-span-4" />
           ))}
         </div>
         <div className="divide-y divide-gray-100">
@@ -30,8 +30,8 @@ export default function IntegrationsLoading() {
                 <Skeleton className="h-4 w-28" />
               </div>
               <div className="col-span-3"><Skeleton className="h-6 w-16 rounded-full" /></div>
-              <div className="col-span-3"><Skeleton className="h-4 w-24" /></div>
-              <div className="col-span-2"><Skeleton className="h-6 w-14 rounded-md" /></div>
+              <div className="col-span-4"><Skeleton className="h-4 w-24" /></div>
+              <div className="col-span-1" />
             </div>
           ))}
         </div>
