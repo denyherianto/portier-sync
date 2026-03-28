@@ -10,7 +10,6 @@ import {
   Database,
   Info,
   PencilLine,
-  RefreshCw,
   Server,
 } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -24,9 +23,12 @@ import { Skeleton } from '@/components/ui/skeleton'
 import {
   getUnresolvedConflictChanges,
   hasBlockingConflict,
+  hasPendingApproval,
   isConflictChange,
 } from '@/lib/syncHistory'
-import { cn, formatRelativeTime, humanizeFieldName } from '@/lib/utils'
+import { cn } from '@/utils/styles'
+import { formatRelativeTime } from '@/utils/date'
+import { humanizeFieldName } from '@/utils/field'
 import type { SyncHistory, SyncHistoryChange } from '@/types'
 
 // ---------------------------------------------------------------------------
@@ -171,8 +173,10 @@ function ConflictResolver({ integrationId, history }: ConflictResolverProps) {
     history.id
   )
 
-  const selectedCount = unresolvedConflicts.filter((c) => isSelectionReady(selections[c.id])).length
-  const allResolved = unresolvedConflicts.length > 0 && selectedCount === unresolvedConflicts.length
+  const approvalMode = unresolvedConflicts.length === 0 && cleanUpdates.length > 0
+  const actionableChanges = approvalMode ? cleanUpdates : unresolvedConflicts
+  const selectedCount = actionableChanges.filter((c) => isSelectionReady(selections[c.id])).length
+  const allResolved = actionableChanges.length > 0 && selectedCount === actionableChanges.length
 
   function updateSelection(changeId: string, patch: Partial<ResolutionSelection>) {
     setSelections((prev) => ({
@@ -221,39 +225,43 @@ function ConflictResolver({ integrationId, history }: ConflictResolverProps) {
       {/* Severity + actions row */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3 text-sm text-gray-500">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="inline-flex items-center gap-1.5 rounded-md bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-600/10 cursor-default">
-                  {getSeverityLabel(unresolvedConflicts.length)}
-                  <Info className="size-3 opacity-60" />
-                </span>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="max-w-64 text-center">
-                {getSeverityTooltip(unresolvedConflicts.length)}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          {!approvalMode && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="inline-flex items-center gap-1.5 rounded-md bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-600/10 cursor-default">
+                    {getSeverityLabel(unresolvedConflicts.length)}
+                    <Info className="size-3 opacity-60" />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-64 text-center">
+                  {getSeverityTooltip(unresolvedConflicts.length)}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
           <span>Last synced: {formatRelativeTime(history.syncedAt)}</span>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setSelections(prev => ({ ...prev, ...createBulkSelections(unresolvedConflicts, 'local') }))}
-            className="border-gray-200 bg-white text-gray-800 hover:bg-gray-50"
-          >
-            Accept All Local
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setSelections(prev => ({ ...prev, ...createBulkSelections(unresolvedConflicts, 'incoming') }))}
-            className="border-gray-200 bg-white text-gray-800 hover:bg-gray-50"
-          >
-            Accept All External
-          </Button>
-        </div>
+        {!approvalMode && (
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setSelections(prev => ({ ...prev, ...createBulkSelections(actionableChanges, 'local') }))}
+              className="border-gray-200 bg-white text-gray-800 hover:bg-gray-50"
+            >
+              Accept All Local
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setSelections(prev => ({ ...prev, ...createBulkSelections(actionableChanges, 'incoming') }))}
+              className="border-gray-200 bg-white text-gray-800 hover:bg-gray-50"
+            >
+              Accept All External
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Conflict table */}
@@ -308,7 +316,7 @@ function ConflictResolver({ integrationId, history }: ConflictResolverProps) {
                       )}>
                         {change.changeType}
                       </span>
-                      {isClean && (
+                      {isClean && !approvalMode && (
                         <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 border border-gray-200 rounded px-1.5 py-0.5">
                           auto-apply
                         </span>
@@ -320,7 +328,7 @@ function ConflictResolver({ integrationId, history }: ConflictResolverProps) {
                     side="local"
                     active={displayMode === 'local'}
                     dimmed={displayMode !== null && displayMode !== 'local'}
-                    readOnly={isClean}
+                    readOnly={isClean && !approvalMode}
                     title="Local value"
                     meta="Current stored value"
                     value={change.currentValue}
@@ -331,7 +339,7 @@ function ConflictResolver({ integrationId, history }: ConflictResolverProps) {
                     side="incoming"
                     active={displayMode === 'incoming'}
                     dimmed={displayMode !== null && displayMode !== 'incoming'}
-                    readOnly={isClean}
+                    readOnly={isClean && !approvalMode}
                     title="Incoming value"
                     meta="Latest sync payload"
                     value={change.newValue}
@@ -339,7 +347,7 @@ function ConflictResolver({ integrationId, history }: ConflictResolverProps) {
                   />
 
                   <div className="flex justify-end pt-3">
-                    {!isClean && (
+                    {(!isClean || approvalMode) && (
                       <button
                         type="button"
                         onClick={() => updateSelection(change.id, { mode: 'manual' })}
@@ -389,8 +397,10 @@ function ConflictResolver({ integrationId, history }: ConflictResolverProps) {
           className="bg-black text-white hover:bg-gray-800 disabled:bg-slate-200 disabled:text-slate-500"
         >
           {isResolving
-            ? 'Resolving…'
-            : `Resolve Conflicts${selectedCount > 0 ? ` (${selectedCount}/${unresolvedConflicts.length})` : ''}`}
+            ? (approvalMode ? 'Approving…' : 'Resolving…')
+            : approvalMode
+              ? `Approve Changes${selectedCount < actionableChanges.length ? ` (${selectedCount}/${actionableChanges.length})` : ''}`
+              : `Resolve Conflicts${selectedCount > 0 ? ` (${selectedCount}/${unresolvedConflicts.length})` : ''}`}
         </Button>
       </div>
     </div>
@@ -408,10 +418,11 @@ export default function ResolveConflictsPage({ params }: { params: Promise<{ id:
   const { data: histories = [], isPending: historiesLoading } = useSyncHistoriesQuery(id)
 
   const latestHistory = histories[0]
-  const latestConflictHistory = hasBlockingConflict(latestHistory) ? latestHistory : null
+  const latestActionableHistory =
+    hasBlockingConflict(latestHistory) || hasPendingApproval(latestHistory) ? latestHistory : null
   const unresolvedConflicts = useMemo(
-    () => getUnresolvedConflictChanges(latestConflictHistory),
-    [latestConflictHistory]
+    () => getUnresolvedConflictChanges(latestActionableHistory),
+    [latestActionableHistory]
   )
 
   return (
@@ -451,18 +462,12 @@ export default function ResolveConflictsPage({ params }: { params: Promise<{ id:
         </div>
 
         <div className="flex flex-col items-stretch sm:items-end gap-2">
-          <p className="text-sm font-medium text-amber-700">
-            Resolve the latest conflict before starting another sync.
+          <p className={cn('text-sm font-medium', unresolvedConflicts.length > 0 ? 'text-amber-700' : 'text-blue-700')}>
+            {unresolvedConflicts.length > 0
+              ? 'Resolve the latest conflict before starting another sync.'
+              : 'Review and approve the latest changes before starting another sync.'}
           </p>
           <div className="flex flex-col-reverse sm:flex-row gap-3">
-            <Button
-              variant="outline"
-              className="border-gray-200 bg-white text-gray-400 hover:bg-gray-50 hover:text-gray-500"
-              disabled
-            >
-              <RefreshCw className="size-4" />
-              Sync Now
-            </Button>
             <Link
               href={`/integrations/${id}`}
               className={cn(buttonVariants({ variant: 'outline' }), 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50')}
@@ -479,7 +484,7 @@ export default function ResolveConflictsPage({ params }: { params: Promise<{ id:
           <Skeleton className="h-10 w-72 rounded-lg" />
           <Skeleton className="h-[420px] w-full rounded-lg" />
         </div>
-      ) : !latestConflictHistory || unresolvedConflicts.length === 0 ? (
+      ) : !latestActionableHistory ? (
           <div className="bg-white rounded-lg border border-gray-200 shadow-sm px-6 py-16 text-center">
           <CheckCircle2 className="mx-auto size-10 text-green-500 mb-3" />
           <p className="text-base font-medium text-gray-900">No active conflicts</p>
@@ -495,9 +500,9 @@ export default function ResolveConflictsPage({ params }: { params: Promise<{ id:
         </div>
       ) : (
             <ConflictResolver
-          key={latestConflictHistory.id}
+          key={latestActionableHistory.id}
           integrationId={id}
-          history={latestConflictHistory}
+          history={latestActionableHistory}
         />
       )}
     </main>

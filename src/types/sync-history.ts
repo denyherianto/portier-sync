@@ -1,4 +1,4 @@
-export type SyncStatus = 'SUCCESS' | 'FAILED' | 'CONFLICT'
+export type SyncStatus = 'SUCCESS' | 'FAILED' | 'CONFLICT' | 'CONFLICT_RESOLVED'
 
 export type ChangeType = 'CREATE' | 'ADD' | 'UPDATE' | 'DELETE'
 

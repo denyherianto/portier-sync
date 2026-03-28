@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { LayoutDashboard, Plug, History, Settings, RefreshCw } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn } from '@/utils/styles'
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },

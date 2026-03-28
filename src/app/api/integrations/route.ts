@@ -30,10 +30,10 @@ export async function POST(request: NextRequest) {
       return Response.json({ error: 'Invalid request body' }, { status: 400 })
     }
 
-    const { name, slug, color, status, lastSynced, version } = body as CreateIntegrationPayload
+    const { name, slug, color, status, lastSynced } = body as CreateIntegrationPayload
 
-    if (!name || !slug || !version) {
-      return Response.json({ error: 'name, slug, and version are required' }, { status: 400 })
+    if (!name || !slug) {
+      return Response.json({ error: 'name and slug are required' }, { status: 400 })
     }
 
     const created = db
@@ -44,7 +44,6 @@ export async function POST(request: NextRequest) {
         color,
         status,
         lastSynced: lastSynced ? new Date(lastSynced) : null,
-        version,
       })
       .returning()
       .get()

@@ -28,7 +28,6 @@ export const integrations = sqliteTable('integrations', {
   color: text('color').notNull().default('#6b7280'),
   status: text('status').$type<IntegrationStatus>().notNull().default('NOT_SYNCED'),
   lastSynced: int('last_synced', { mode: 'timestamp' }),
-  version: text('version').notNull(),
   createdAt: int('created_at', { mode: 'timestamp' })
     .notNull()
     .default(sql`(unixepoch())`),

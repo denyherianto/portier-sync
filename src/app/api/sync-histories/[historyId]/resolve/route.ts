@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { desc, eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { integrations, syncHistories, syncHistoryChanges } from '@/lib/db/schema'
-import { isConflictChange, mapSyncStatusToIntegrationStatus } from '@/lib/syncHistory'
+import { isConflictChange, hasPendingApproval, mapSyncStatusToIntegrationStatus } from '@/lib/syncHistory'
 import type { ResolveSyncHistoryPayload } from '@/types'
 
 export const runtime = 'nodejs'
@@ -47,15 +47,21 @@ export async function POST(request: NextRequest, { params }: Params) {
       .all()
 
     const conflictChanges = changes.filter(isConflictChange)
-    if (history.status !== 'CONFLICT' || conflictChanges.length === 0) {
-      return Response.json({ error: 'This Sync History has no active conflicts.' }, { status: 400 })
+    const historyWithChanges = { ...history, changes }
+    const isConflictMode = history.status === 'CONFLICT' && conflictChanges.length > 0
+    const isApprovalMode = hasPendingApproval(historyWithChanges)
+
+    if (!isConflictMode && !isApprovalMode) {
+      return Response.json({ error: 'This sync history has no pending conflicts or changes to approve.' }, { status: 400 })
     }
 
     const chosenValueByChangeId = new Map(normalizedResolutions.map((resolution) => [resolution.changeId, resolution.chosenValue]))
-    const hasMissingResolution = conflictChanges.some((change) => !chosenValueByChangeId.has(change.id))
 
-    if (hasMissingResolution) {
-      return Response.json({ error: 'All conflict must be resolved.' }, { status: 400 })
+    if (isConflictMode) {
+      const hasMissingResolution = conflictChanges.some((change) => !chosenValueByChangeId.has(change.id))
+      if (hasMissingResolution) {
+        return Response.json({ error: 'All conflicts must be resolved.' }, { status: 400 })
+      }
     }
 
     db.transaction((tx) => {
@@ -68,7 +74,7 @@ export async function POST(request: NextRequest, { params }: Params) {
       }
 
       tx.update(syncHistories)
-        .set({ status: 'SUCCESS' })
+        .set({ status: isConflictMode ? 'CONFLICT_RESOLVED' : 'SUCCESS' })
         .where(eq(syncHistories.id, historyId))
         .run()
 

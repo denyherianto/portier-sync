@@ -8,8 +8,10 @@ import { useSyncHistoriesQuery } from '@/api/queries/sync-histories'
 import { useSyncMutation } from '@/api/mutations/sync'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { cn, formatRelativeTime, humanizeFieldName } from '@/lib/utils'
-import { getUnresolvedConflictChanges, hasBlockingConflict, isConflictChange, isUnresolvedConflictChange } from '@/lib/syncHistory'
+import { cn } from '@/utils/styles'
+import { formatRelativeTime } from '@/utils/date'
+import { humanizeFieldName } from '@/utils/field'
+import { getUnresolvedConflictChanges, hasBlockingConflict, hasPendingApproval, isConflictChange, isUnresolvedConflictChange } from '@/lib/syncHistory'
 import type { SyncHistory, SyncStatus } from '@/types'
 
 // ---------------------------------------------------------------------------
@@ -18,19 +20,12 @@ import type { SyncHistory, SyncStatus } from '@/types'
 
 const syncStatusConfig: Record<SyncStatus, { label: string; icon: React.ReactNode; className: string }> = {
   SUCCESS: { label: 'Success', icon: <CheckCircle className="w-3.5 h-3.5" />, className: 'bg-green-50 text-green-700 border-green-200' },
+  CONFLICT_RESOLVED: { label: 'Conflict (Resolved)', icon: <GitMerge className="w-3.5 h-3.5" />, className: 'bg-teal-50 text-teal-700 border-teal-200' },
   CONFLICT: { label: 'Conflict', icon: <GitMerge className="w-3.5 h-3.5" />, className: 'bg-amber-50 text-amber-700 border-amber-200' },
   FAILED: { label: 'Failed', icon: <XCircle className="w-3.5 h-3.5" />, className: 'bg-red-50 text-red-700 border-red-200' },
 }
 
-function SyncStatusBadge({ status, conflictResolved }: { status: SyncStatus; conflictResolved?: boolean }) {
-  if (status === 'SUCCESS' && conflictResolved) {
-    return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border bg-teal-50 text-teal-700 border-teal-200">
-        <GitMerge className="w-3.5 h-3.5" />
-        Conflict (Resolved)
-      </span>
-    )
-  }
+function SyncStatusBadge({ status }: { status: SyncStatus }) {
   const { label, icon, className } = syncStatusConfig[status]
   return (
     <span className={cn('inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border', className)}>
@@ -73,12 +68,10 @@ function StatCard({ title, icon, value, sub, accent }: StatCardProps) {
 
 function useStats(histories: SyncHistory[]) {
   return useMemo(() => {
-    const lastSuccess = histories.find(h => h.status === 'SUCCESS')
+    const lastSuccess = histories.find(h => h.status === 'SUCCESS' || h.status === 'CONFLICT_RESOLVED')
     const totalSyncs = histories.length
-    const resolvedConflicts = histories.filter(h =>
-      (h.changes ?? []).some(c => c.chosenValue !== null && c.chosenValue !== undefined)
-    ).length
-    const successCount = histories.filter(h => h.status === 'SUCCESS').length
+    const resolvedConflicts = histories.filter(h => h.status === 'CONFLICT_RESOLVED').length
+    const successCount = histories.filter(h => h.status === 'SUCCESS' || h.status === 'CONFLICT_RESOLVED').length
     const health = totalSyncs > 0 ? ((successCount / totalSyncs) * 100).toFixed(1) : '—'
 
     return { lastSuccess, totalSyncs, resolvedConflicts, health }
@@ -115,8 +108,6 @@ function HistoryList({ histories }: { histories: SyncHistory[] }) {
         const conflictCount = getUnresolvedConflictChanges(h).length
         const changes = h.changes ?? []
         const isExpanded = expandedId === h.id
-        const conflictResolved = h.status === 'SUCCESS' && changes.some(c => c.chosenValue !== null && c.chosenValue !== undefined)
-
         return (
           <div key={h.id}>
             <button
@@ -124,7 +115,7 @@ function HistoryList({ histories }: { histories: SyncHistory[] }) {
               className="w-full grid grid-cols-1 md:grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-gray-50/80 transition-colors text-left"
             >
               <div className="md:col-span-3">
-                <SyncStatusBadge status={h.status} conflictResolved={conflictResolved} />
+                <SyncStatusBadge status={h.status} />
               </div>
               <div className="md:col-span-4 text-sm text-gray-600">
                 {new Date(h.syncedAt).toLocaleString()}
@@ -240,6 +231,7 @@ export default function IntegrationDetailPage({ params }: { params: Promise<{ id
   const { lastSuccess, totalSyncs, resolvedConflicts, health } = useStats(histories)
   const latestHistory = histories[0]
   const syncBlocked = hasBlockingConflict(latestHistory)
+  const syncPendingApproval = hasPendingApproval(latestHistory)
 
   return (
     <main className="flex-1 max-w-6xl w-full mx-auto px-6 py-10 flex flex-col gap-8">
@@ -280,6 +272,11 @@ export default function IntegrationDetailPage({ params }: { params: Promise<{ id
               Resolve the latest conflict before starting another sync.
             </p>
           )}
+          {syncPendingApproval && (
+            <p className="text-sm font-medium text-blue-700">
+              Review and approve the latest changes before starting another sync.
+            </p>
+          )}
           <div className="flex flex-col-reverse sm:flex-row gap-3">
             {syncBlocked && (
               <Link
@@ -292,9 +289,20 @@ export default function IntegrationDetailPage({ params }: { params: Promise<{ id
                 Resolve Conflicts
               </Link>
             )}
+            {syncPendingApproval && (
+              <Link
+                href={`/integrations/${id}/resolve-conflicts`}
+                className={cn(
+                  buttonVariants({ size: 'lg' }),
+                  'bg-blue-600 text-white hover:bg-blue-700'
+                )}
+              >
+                Approve Changes
+              </Link>
+            )}
             <Button
               onClick={() => triggerSync()}
-              disabled={syncing || syncBlocked}
+              disabled={syncing || syncBlocked || syncPendingApproval}
               size="lg"
               className="bg-black text-white hover:bg-gray-800 disabled:bg-slate-200 disabled:text-slate-500"
             >

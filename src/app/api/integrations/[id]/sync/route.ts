@@ -51,6 +51,8 @@ export async function POST(_request: NextRequest, { params }: Params) {
         externalChanges = data?.sync_approval?.changes ?? []
         if (data?.synced_at) syncedAt = new Date(data.synced_at)
 
+        console.log('externalChanges', externalChanges)
+
         const hasConflict = externalChanges.some(
           (change) => change.change_type === 'UPDATE' && isSimilarEnoughToConflict(change.current_value, change.new_value)
         )

@@ -7,7 +7,6 @@ export type Integration = {
   color: string
   status: IntegrationStatus
   lastSynced: string | null
-  version: string
   createdAt: string
   updatedAt: string
 }
@@ -18,7 +17,6 @@ export type CreateIntegrationPayload = {
   color?: string
   status?: IntegrationStatus
   lastSynced?: string | null
-  version: string
 }
 
 export type UpdateIntegrationPayload = {
@@ -26,5 +24,4 @@ export type UpdateIntegrationPayload = {
   color?: string
   status?: IntegrationStatus
   lastSynced?: string | null
-  version?: string
 }

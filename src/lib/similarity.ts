@@ -14,7 +14,7 @@ import { jaroWinkler } from '@skyra/jaro-winkler'
  *   NO_CONFLICT  "active" → "revoked"                  (~0.54)
  */
 
-export const CONFLICT_THRESHOLD = 0.7
+export const CONFLICT_THRESHOLD = 0.8
 
 export function isSimilarEnoughToConflict(
   a: string | null | undefined,

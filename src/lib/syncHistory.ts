@@ -1,16 +1,14 @@
 import type { IntegrationStatus, SyncHistory, SyncHistoryChange, SyncStatus } from '@/types'
 import { isSimilarEnoughToConflict } from '@/lib/similarity'
-import { SYNC_STATUS_TO_INTEGRATION_STATUS } from '@/constants'
+import { INTEGRATION_STATUS } from '@/constants'
+import { isDateField, isDateValue } from '@/utils/date'
 
-const DATE_FIELD_PATTERN = /\b(date|time|at|timestamp|expir|birth|dob|created|updated|modified|start|end)\b/i
-
-export function isDateField(fieldName: string): boolean {
-  return DATE_FIELD_PATTERN.test(fieldName)
-}
+export { isDateField, isDateValue }
 
 export function isConflictChange(change: SyncHistoryChange) {
   if (change.changeType !== 'UPDATE') return false
   if (isDateField(change.fieldName)) return false
+  if (isDateValue(change.currentValue) || isDateValue(change.newValue)) return false
   return isSimilarEnoughToConflict(change.currentValue, change.newValue)
 }
 
@@ -30,6 +28,13 @@ export function hasBlockingConflict(history?: SyncHistory | null) {
   return history?.status === 'CONFLICT' && getUnresolvedConflictChanges(history).length > 0
 }
 
+export function hasPendingApproval(history?: SyncHistory | null) {
+  if (!history || (history.status !== 'SUCCESS' && history.status !== 'CONFLICT_RESOLVED')) return false
+  return (history.changes ?? []).some(
+    c => c.changeType === 'UPDATE' && !isConflictChange(c) && (c.chosenValue === null || c.chosenValue === undefined)
+  )
+}
+
 /** Parse entity prefix from field_name (e.g. "user.status" → "user") */
 export function entityFromFieldName(fieldName: string): string {
   const dot = fieldName.indexOf('.')
@@ -42,5 +47,5 @@ export function entityLabel(entity: string): string {
 }
 
 export function mapSyncStatusToIntegrationStatus(status: SyncStatus): IntegrationStatus {
-  return SYNC_STATUS_TO_INTEGRATION_STATUS[status]
+  return INTEGRATION_STATUS[status]
 }

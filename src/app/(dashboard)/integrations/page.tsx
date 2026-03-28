@@ -13,7 +13,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { cn, formatRelativeTime } from '@/lib/utils'
+import { cn } from '@/utils/styles'
+import { formatRelativeTime } from '@/utils/date'
 import type { IntegrationStatus, IntegrationCatalog } from '@/types'
 
 // ---------------------------------------------------------------------------
