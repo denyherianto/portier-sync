@@ -66,7 +66,6 @@ function AddIntegrationDialog({ open, onClose }: AddIntegrationDialogProps) {
   const { data: catalog = [], isPending: catalogLoading } = useIntegrationCatalogQuery()
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [version, setVersion] = useState('1.0.0')
   // custom-only fields
   const [customName, setCustomName] = useState('')
   const [customSlug, setCustomSlug] = useState('')
@@ -85,7 +84,6 @@ function AddIntegrationDialog({ open, onClose }: AddIntegrationDialogProps) {
 
   function handleClose() {
     setSelectedId(null)
-    setVersion('1.0.0')
     setCustomName('')
     setCustomSlug('')
     setCustomSlugTouched(false)
@@ -95,23 +93,23 @@ function AddIntegrationDialog({ open, onClose }: AddIntegrationDialogProps) {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!selectedId || !version.trim()) return
+    if (!selectedId) return
 
     if (isCustom) {
       if (!customName.trim() || !customSlug.trim()) return
       createIntegration(
-        { name: customName.trim(), slug: customSlug.trim(), version: version.trim(), color: customColor },
+        { name: customName.trim(), slug: customSlug.trim(), color: customColor },
         { onSuccess: handleClose }
       )
     } else if (selectedCatalog) {
       createIntegration(
-        { name: selectedCatalog.name, slug: selectedCatalog.id, version: version.trim(), color: selectedCatalog.color },
+        { name: selectedCatalog.name, slug: selectedCatalog.id, color: selectedCatalog.color },
         { onSuccess: handleClose }
       )
     }
   }
 
-  const canSubmit = !!selectedId && !!version.trim() &&
+  const canSubmit = !!selectedId &&
     (isCustom ? !!customName.trim() && !!customSlug.trim() : true)
 
   // All catalog options + custom at the bottom
@@ -220,20 +218,6 @@ function AddIntegrationDialog({ open, onClose }: AddIntegrationDialogProps) {
             </>
           )}
 
-          {/* Version — always shown once a selection is made */}
-          {selectedId && (
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-gray-700">Version</label>
-              <input
-                type="text"
-                placeholder="e.g. 1.0.0"
-                value={version}
-                onChange={e => setVersion(e.target.value)}
-                required
-                className="w-full px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-400 placeholder:text-gray-400 text-gray-900 transition-all"
-              />
-            </div>
-          )}
 
           <div className="flex justify-end gap-2 pt-1">
             <button
@@ -367,8 +351,7 @@ export default function IntegrationsPage() {
         <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-3 border-b border-gray-200 bg-gray-50/50">
           <div className="col-span-4 text-xs font-semibold text-gray-500 uppercase tracking-widest">Integration</div>
           <div className="col-span-3 text-xs font-semibold text-gray-500 uppercase tracking-widest">Status</div>
-          <div className="col-span-2 text-xs font-semibold text-gray-500 uppercase tracking-widest">Last Synced</div>
-          <div className="col-span-2 text-xs font-semibold text-gray-500 uppercase tracking-widest">Version</div>
+          <div className="col-span-4 text-xs font-semibold text-gray-500 uppercase tracking-widest">Last Synced</div>
           <div className="col-span-1" />
         </div>
 
@@ -382,8 +365,7 @@ export default function IntegrationsPage() {
                   <Skeleton className="h-4 w-28" />
                 </div>
                 <div className="col-span-3"><Skeleton className="h-6 w-16 rounded-full" /></div>
-                <div className="col-span-2"><Skeleton className="h-4 w-24" /></div>
-                <div className="col-span-2"><Skeleton className="h-6 w-14 rounded-md" /></div>
+                <div className="col-span-4"><Skeleton className="h-4 w-24" /></div>
                 <div className="col-span-1" />
               </div>
             ))}
@@ -431,16 +413,9 @@ export default function IntegrationsPage() {
                   <StatusBadge status={integration.status} />
                 </div>
 
-                <div className="md:col-span-2 flex items-center justify-between md:justify-start text-base text-gray-500 group-hover:text-gray-700 transition-colors">
+                <div className="md:col-span-4 flex items-center justify-between md:justify-start text-base text-gray-500 group-hover:text-gray-700 transition-colors">
                   <span className="text-xs font-semibold text-gray-500 md:hidden uppercase tracking-widest">Last Synced</span>
                   {formatRelativeTime(integration.lastSynced)}
-                </div>
-
-                <div className="md:col-span-2 flex items-center justify-between md:justify-start">
-                  <span className="text-xs font-semibold text-gray-500 md:hidden uppercase tracking-widest">Version</span>
-                  <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium text-gray-600 bg-gray-50 border border-gray-200">
-                    {integration.version}
-                  </span>
                 </div>
 
                 <div className="md:col-span-1 flex justify-end">
