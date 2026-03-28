@@ -1,13 +1,10 @@
 import type { IntegrationStatus, SyncHistory, SyncHistoryChange, SyncStatus } from '@/types'
 import { isSimilarEnoughToConflict } from '@/lib/similarity'
 import { INTEGRATION_STATUS } from '@/constants'
-import { isDateField, isDateValue } from '@/utils/date'
-
-export { isDateField, isDateValue }
+import { isDateValue } from '@/utils/date'
 
 export function isConflictChange(change: SyncHistoryChange) {
   if (change.changeType !== 'UPDATE') return false
-  if (isDateField(change.fieldName)) return false
   if (isDateValue(change.currentValue) || isDateValue(change.newValue)) return false
   return isSimilarEnoughToConflict(change.currentValue, change.newValue)
 }
