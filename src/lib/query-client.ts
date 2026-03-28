@@ -1,5 +1,5 @@
-import { QueryClient } from '@tanstack/react-query';
-import { ApiError } from '@/api/client';
+import { QueryClient } from '@tanstack/react-query'
+import { ApiError } from '@/api/client'
 
 export function makeQueryClient(): QueryClient {
   return new QueryClient({
@@ -8,28 +8,28 @@ export function makeQueryClient(): QueryClient {
         staleTime: 60 * 1000,
         retry: (failureCount, error) => {
           if (error instanceof ApiError && error.status < 500) {
-            return false;
+            return false
           }
-          return failureCount < 3;
+          return failureCount < 3
         },
       },
       mutations: {
         retry: false,
       },
     },
-  });
+  })
 }
 
-let browserQueryClient: QueryClient | undefined;
+let browserQueryClient: QueryClient | undefined
 
 export function getQueryClient(): QueryClient {
   if (typeof window === 'undefined') {
-    return makeQueryClient();
+    return makeQueryClient()
   }
 
   if (!browserQueryClient) {
-    browserQueryClient = makeQueryClient();
+    browserQueryClient = makeQueryClient()
   }
 
-  return browserQueryClient;
+  return browserQueryClient
 }

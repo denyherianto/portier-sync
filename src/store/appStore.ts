@@ -1,13 +1,13 @@
-import { create } from 'zustand';
+import { create } from 'zustand'
 
-type Theme = 'light' | 'dark' | 'system';
+type Theme = 'light' | 'dark' | 'system'
 
 interface AppState {
-  sidebarOpen: boolean;
-  theme: Theme;
-  setSidebarOpen: (open: boolean) => void;
-  toggleSidebar: () => void;
-  setTheme: (theme: Theme) => void;
+  sidebarOpen: boolean
+  theme: Theme
+  setSidebarOpen: (open: boolean) => void
+  toggleSidebar: () => void
+  setTheme: (theme: Theme) => void
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -16,4 +16,4 @@ export const useAppStore = create<AppState>((set) => ({
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
   toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
   setTheme: (theme) => set({ theme }),
-}));
+}))
