@@ -14,21 +14,21 @@ export async function GET(request: NextRequest) {
       return Response.json({ error: 'integrationId is required' }, { status: 400 })
     }
 
-    const histories = db
+    const histories = await db
       .select()
       .from(syncHistories)
       .where(eq(syncHistories.integrationId, integrationId))
       .orderBy(desc(syncHistories.syncedAt))
-      .all()
 
-    const historiesWithChanges = histories.map(h => ({
-      ...h,
-      changes: db
-        .select()
-        .from(syncHistoryChanges)
-        .where(eq(syncHistoryChanges.syncHistoryId, h.id))
-        .all(),
-    }))
+    const historiesWithChanges = await Promise.all(
+      histories.map(async (h) => ({
+        ...h,
+        changes: await db
+          .select()
+          .from(syncHistoryChanges)
+          .where(eq(syncHistoryChanges.syncHistoryId, h.id)),
+      }))
+    )
 
     return Response.json(historiesWithChanges)
   } catch (error) {

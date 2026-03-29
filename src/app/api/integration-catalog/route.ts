@@ -5,7 +5,7 @@ export const runtime = 'nodejs'
 
 export async function GET() {
   try {
-    const result = db.select().from(integrationCatalog).all()
+    const result = await db.select().from(integrationCatalog)
     return Response.json(result)
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Internal server error'

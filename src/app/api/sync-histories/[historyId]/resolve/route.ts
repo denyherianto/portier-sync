@@ -30,21 +30,19 @@ export async function POST(request: NextRequest, { params }: Params) {
       return Response.json({ error: 'At least one resolution is required' }, { status: 400 })
     }
 
-    const history = db
+    const [history] = await db
       .select()
       .from(syncHistories)
       .where(eq(syncHistories.id, historyId))
-      .get()
 
     if (!history) {
       return Response.json({ error: 'Sync history not found' }, { status: 404 })
     }
 
-    const changes = db
+    const changes = await db
       .select()
       .from(syncHistoryChanges)
       .where(eq(syncHistoryChanges.syncHistoryId, historyId))
-      .all()
 
     const conflictChanges = changes.filter(isConflictChange)
     const historyWithChanges = {
@@ -69,51 +67,45 @@ export async function POST(request: NextRequest, { params }: Params) {
       }
     }
 
-    db.transaction((tx) => {
+    await db.transaction(async (tx) => {
       // Persist chosen value for every change that has a resolution (conflicts required, clean updates optional)
       for (const [changeId, chosenValue] of chosenValueByChangeId.entries()) {
-        tx.update(syncHistoryChanges)
+        await tx.update(syncHistoryChanges)
           .set({ chosenValue })
           .where(eq(syncHistoryChanges.id, changeId))
-          .run()
       }
 
-      tx.update(syncHistories)
+      await tx.update(syncHistories)
         .set({ status: isConflictMode ? 'CONFLICT_RESOLVED' : 'SUCCESS' })
         .where(eq(syncHistories.id, historyId))
-        .run()
 
-      const latestHistory = tx
+      const [latestHistory] = await tx
         .select()
         .from(syncHistories)
         .where(eq(syncHistories.integrationId, history.integrationId))
         .orderBy(desc(syncHistories.syncedAt))
-        .get()
 
-      tx.update(integrations)
+      await tx.update(integrations)
         .set({
           status: latestHistory ? mapSyncStatusToIntegrationStatus(latestHistory.status) : 'NOT_SYNCED',
           updatedAt: new Date(),
         })
         .where(eq(integrations.id, history.integrationId))
-        .run()
     })
 
-    const updatedHistory = db
+    const [updatedHistory] = await db
       .select()
       .from(syncHistories)
       .where(eq(syncHistories.id, historyId))
-      .get()
 
     if (!updatedHistory) {
       return Response.json({ error: 'Sync History not found!' }, { status: 404 })
     }
 
-    const updatedChanges = db
+    const updatedChanges = await db
       .select()
       .from(syncHistoryChanges)
       .where(eq(syncHistoryChanges.syncHistoryId, historyId))
-      .all()
 
     return Response.json({ ...updatedHistory, changes: updatedChanges })
   } catch (error) {

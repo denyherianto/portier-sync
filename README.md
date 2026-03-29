@@ -13,7 +13,7 @@ Integration management dashboard for monitoring, syncing, and resolving data con
 ## Stack
 
 - [Next.js 16](https://nextjs.org/) — App Router, Route Handlers
-- [Drizzle ORM](https://orm.drizzle.team/) + [better-sqlite3](https://github.com/WiseLibs/better-sqlite3) — local SQLite database
+- [Drizzle ORM](https://orm.drizzle.team/) + [postgres.js](https://github.com/porsager/postgres) — PostgreSQL database
 - [TanStack Query v5](https://tanstack.com/query) — data fetching and mutations
 - [Tailwind CSS v4](https://tailwindcss.com/) + [shadcn/ui](https://ui.shadcn.com/)
 
@@ -23,6 +23,7 @@ Integration management dashboard for monitoring, syncing, and resolving data con
 
 - Node.js 20+
 - npm
+- Docker (for PostgreSQL)
 
 ### Setup
 
@@ -33,8 +34,10 @@ npm install
 # Copy env file and configure
 cp .env.example .env.local
 
-# Generate and run database migrations
-npm run db:generate
+# Start PostgreSQL
+docker compose up -d postgres
+
+# Run database migrations
 npm run db:migrate
 
 # Start development server
@@ -47,7 +50,7 @@ Open [http://localhost:3000](http://localhost:3000).
 
 | Variable | Description | Default |
 |---|---|---|
-| `DATABASE_PATH` | Path to the SQLite database file | `./data/portier-sync.db` |
+| `DATABASE_URL` | PostgreSQL connection URL | `postgresql://portier:portier@localhost:54329/portier_sync` |
 | `NEXT_PUBLIC_API_BASE_URL` | API base URL (empty = same origin) | `` |
 
 ## Database
@@ -58,14 +61,19 @@ npm run db:migrate    # Apply pending migrations
 npm run db:studio     # Open Drizzle Studio (database browser)
 ```
 
+Migrations run automatically on startup via Next.js instrumentation.
+
 ## Docker
 
 ```bash
 # Copy and configure env
 cp .env.example .env.local
 
-# Build and run
+# Start PostgreSQL only
+docker compose up -d postgres
+
+# Start the full stack (app + postgres)
 docker compose up --build
 ```
 
-The SQLite database is persisted in a named Docker volume (`db_data`).
+PostgreSQL data is persisted in a named Docker volume (`db_data`).

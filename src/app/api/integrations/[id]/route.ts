@@ -11,7 +11,7 @@ type Params = { params: Promise<{ id: string }> }
 export async function GET(_request: NextRequest, { params }: Params) {
   try {
     const { id } = await params
-    const integration = db.select().from(integrations).where(eq(integrations.id, id)).get()
+    const [integration] = await db.select().from(integrations).where(eq(integrations.id, id))
 
     if (!integration) {
       return Response.json({ error: 'Not found' }, { status: 404 })
@@ -40,12 +40,11 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       ...(lastSynced !== undefined && { lastSynced: lastSynced ? new Date(lastSynced) : null }),
     }
 
-    const updated = db
+    const [updated] = await db
       .update(integrations)
       .set(dbPayload)
       .where(eq(integrations.id, id))
       .returning()
-      .get()
 
     if (!updated) {
       return Response.json({ error: 'Not found' }, { status: 404 })
@@ -61,7 +60,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 export async function DELETE(_request: NextRequest, { params }: Params) {
   try {
     const { id } = await params
-    const deleted = db.delete(integrations).where(eq(integrations.id, id)).returning().get()
+    const [deleted] = await db.delete(integrations).where(eq(integrations.id, id)).returning()
 
     if (!deleted) {
       return Response.json({ error: 'Not found' }, { status: 404 })

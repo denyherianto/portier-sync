@@ -1,10 +1,13 @@
-import type { Config } from 'drizzle-kit';
+import { config } from 'dotenv'
+import type { Config } from 'drizzle-kit'
+
+config({ path: '.env.local' })
 
 export default {
   schema: './src/lib/db/schema.ts',
   out: './drizzle',
-  dialect: 'sqlite',
+  dialect: 'postgresql',
   dbCredentials: {
-    url: process.env.DATABASE_PATH ?? './data/portier-sync.db',
+    url: process.env.DATABASE_URL!,
   },
-} satisfies Config;
+} satisfies Config

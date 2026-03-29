@@ -12,19 +12,18 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     const { changeId } = await params
     const { chosenValue }: { chosenValue: string } = await request.json()
 
-    const updated = db
+    const [updated] = await db
       .update(syncHistoryChanges)
       .set({ chosenValue })
       .where(eq(syncHistoryChanges.id, changeId))
       .returning()
-      .get()
 
     if (!updated) {
       return Response.json({ error: 'Sync History Changes not found!' }, { status: 404 })
     }
 
     // Check if all conflict changes in this history are now resolved
-    const unresolvedConflicts = db
+    const unresolvedConflicts = await db
       .select()
       .from(syncHistoryChanges)
       .where(
@@ -34,22 +33,19 @@ export async function PATCH(request: NextRequest, { params }: Params) {
           isNull(syncHistoryChanges.chosenValue)
         )
       )
-      .all()
 
     if (unresolvedConflicts.length === 0) {
       // All conflicts resolved — mark history as SUCCESS and integration as SYNCED
-      const history = db
+      const [history] = await db
         .update(syncHistories)
         .set({ status: 'SUCCESS' })
         .where(eq(syncHistories.id, updated.syncHistoryId))
         .returning()
-        .get()
 
       if (history) {
-        db.update(integrations)
+        await db.update(integrations)
           .set({ status: 'SYNCED', lastSynced: history.syncedAt, updatedAt: new Date() })
           .where(eq(integrations.id, history.integrationId))
-          .run()
       }
     }
 

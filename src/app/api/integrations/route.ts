@@ -12,8 +12,8 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status')
 
     const result = status
-      ? db.select().from(integrations).where(eq(integrations.status, status as 'NOT_SYNCED' | 'SYNCED' | 'CONFLICT' | 'SYNCING' | 'ERROR')).all()
-      : db.select().from(integrations).all()
+      ? await db.select().from(integrations).where(eq(integrations.status, status as 'NOT_SYNCED' | 'SYNCED' | 'CONFLICT' | 'SYNCING' | 'ERROR'))
+      : await db.select().from(integrations)
 
     return Response.json(result)
   } catch (error) {
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
       return Response.json({ error: 'name and slug are required' }, { status: 400 })
     }
 
-    const created = db
+    const [created] = await db
       .insert(integrations)
       .values({
         name,
@@ -46,7 +46,6 @@ export async function POST(request: NextRequest) {
         lastSynced: lastSynced ? new Date(lastSynced) : null,
       })
       .returning()
-      .get()
 
     return Response.json(created, { status: 201 })
   } catch (error) {

@@ -30,7 +30,7 @@ export async function POST(_request: NextRequest, { params }: Params) {
   try {
     const { id } = await params
 
-    const integration = db.select().from(integrations).where(eq(integrations.id, id)).get()
+    const [integration] = await db.select().from(integrations).where(eq(integrations.id, id))
     if (!integration) {
       return Response.json({ error: 'Integration not found' }, { status: 404 })
     }
@@ -61,14 +61,13 @@ export async function POST(_request: NextRequest, { params }: Params) {
     }
 
     // Persist sync history
-    const history = db
+    const [history] = await db
       .insert(syncHistories)
       .values({ integrationId: id, syncedAt, status })
       .returning()
-      .get()
 
     if (externalChanges.length > 0) {
-      db.insert(syncHistoryChanges)
+      await db.insert(syncHistoryChanges)
         .values(
           externalChanges.map(c => ({
             syncHistoryId: history.id,
@@ -79,7 +78,6 @@ export async function POST(_request: NextRequest, { params }: Params) {
             chosenValue: c.chosen_value ?? null,
           }))
         )
-        .run()
     }
 
     // Update integration status and lastSynced
@@ -88,20 +86,18 @@ export async function POST(_request: NextRequest, { params }: Params) {
         status === 'CONFLICT' ? 'CONFLICT' :
           'ERROR'
 
-    db.update(integrations)
+    await db.update(integrations)
       .set({
         status: newIntegrationStatus,
         lastSynced: syncedAt,
         updatedAt: new Date(),
       })
       .where(eq(integrations.id, id))
-      .run()
 
-    const changes = db
+    const changes = await db
       .select()
       .from(syncHistoryChanges)
       .where(eq(syncHistoryChanges.syncHistoryId, history.id))
-      .all()
 
     return Response.json({ ...history, changes })
   } catch (error) {
