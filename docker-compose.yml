@@ -4,7 +4,11 @@ services:
     ports:
       - "${APP_PORT:-3000}:3000"
     environment:
-      - DATABASE_URL=${DATABASE_URL}
+      - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=${POSTGRES_DB:-portier_sync}
+      - POSTGRES_USER=${POSTGRES_USER:-portier}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-portier}
       - NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL:-}
     depends_on:
       postgres:
@@ -14,15 +18,15 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: portier_sync
-      POSTGRES_USER: portier
-      POSTGRES_PASSWORD: portier
+      POSTGRES_DB: ${POSTGRES_DB:-portier_sync}
+      POSTGRES_USER: ${POSTGRES_USER:-portier}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-portier}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U portier -d portier_sync"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-portier} -d ${POSTGRES_DB:-portier_sync}"]
       interval: 5s
       timeout: 5s
       retries: 5
