@@ -1,14 +1,14 @@
 services:
-  # app:
-  #   build: .
-  #   ports:
-  #     - "3000:3000"
-  #   env_file:
-  #     - .env.local
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #   restart: unless-stopped
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env.local
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
 
   postgres:
     image: postgres:16-alpine
